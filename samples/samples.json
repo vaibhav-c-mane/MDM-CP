@@ -1,0 +1,130 @@
+{
+  "samples": [
+    {
+      "id": "S01",
+      "group": "PDF documents",
+      "title": "Signed contract",
+      "file": "contract-signed.pdf",
+      "signature": null,
+      "expected": "VALID",
+      "explanation": "Alice signed it with a certificate from the trusted demo CA. Nothing changed afterwards."
+    },
+    {
+      "id": "S02",
+      "group": "PDF documents",
+      "title": "Amount changed after signing",
+      "file": "contract-amount-changed.pdf",
+      "signature": null,
+      "expected": "INVALID",
+      "explanation": "Someone edited Rs. 5,000 to Rs. 9,000 inside the PDF, so the hash no longer matches."
+    },
+    {
+      "id": "S03",
+      "group": "PDF documents",
+      "title": "Corrupted signature value",
+      "file": "contract-bad-signature.pdf",
+      "signature": null,
+      "expected": "INVALID",
+      "explanation": "One digit of the signature number s was changed, so s^e mod n no longer gives the hash."
+    },
+    {
+      "id": "S04",
+      "group": "PDF documents",
+      "title": "Content added after signing",
+      "file": "contract-changed-later.pdf",
+      "signature": null,
+      "expected": "UNKNOWN",
+      "explanation": "The signed part is intact, but extra bytes were appended afterwards, outside the signature."
+    },
+    {
+      "id": "S05",
+      "group": "PDF documents",
+      "title": "Self-signed certificate",
+      "file": "letter-self-signed.pdf",
+      "signature": null,
+      "expected": "UNKNOWN",
+      "explanation": "The maths is correct, but Mallory issued their own certificate, so nobody vouches for the name."
+    },
+    {
+      "id": "S06",
+      "group": "PDF documents",
+      "title": "Certificate from an untrusted CA",
+      "file": "letter-unknown-ca.pdf",
+      "signature": null,
+      "expected": "UNKNOWN",
+      "explanation": "Charlie's certificate chains to 'Unknown Root CA', which is not in our trust store."
+    },
+    {
+      "id": "S07",
+      "group": "PDF documents",
+      "title": "Expired certificate",
+      "file": "contract-expired-cert.pdf",
+      "signature": null,
+      "expected": "UNKNOWN",
+      "explanation": "The certificate was valid only during 2023; it had expired when this was signed."
+    },
+    {
+      "id": "S08",
+      "group": "PDF documents",
+      "title": "Weak hash (SHA-1)",
+      "file": "contract-sha1.pdf",
+      "signature": null,
+      "expected": "UNKNOWN",
+      "explanation": "The signature is correct, but SHA-1 collisions have been found, so it is no longer trusted."
+    },
+    {
+      "id": "S09",
+      "group": "PDF documents",
+      "title": "Unsigned PDF",
+      "file": "unsigned.pdf",
+      "signature": null,
+      "expected": "NO_SIGNATURE",
+      "explanation": "A normal PDF without any signature."
+    },
+    {
+      "id": "S10",
+      "group": "Other files + .p7s signature",
+      "title": "Text file with detached signature",
+      "file": "invoice.txt",
+      "signature": "invoice.txt.p7s",
+      "expected": "VALID",
+      "explanation": "Bob signed the invoice; the signature is in a separate .p7s file."
+    },
+    {
+      "id": "S11",
+      "group": "Other files + .p7s signature",
+      "title": "Edited text file",
+      "file": "invoice-edited.txt",
+      "signature": "invoice.txt.p7s",
+      "expected": "INVALID",
+      "explanation": "The amount was changed after Bob signed, so the hash is different."
+    },
+    {
+      "id": "S12",
+      "group": "Other files + .p7s signature",
+      "title": "Image with detached signature",
+      "file": "photo.bmp",
+      "signature": "photo.bmp.p7s",
+      "expected": "VALID",
+      "explanation": "Any file is just bytes, so images can be signed too."
+    },
+    {
+      "id": "S13",
+      "group": "Other files + .p7s signature",
+      "title": "Signature for a different file",
+      "file": "invoice.txt",
+      "signature": "photo.bmp.p7s",
+      "expected": "INVALID",
+      "explanation": "The photo's signature does not match the invoice."
+    },
+    {
+      "id": "S14",
+      "group": "Other files + .p7s signature",
+      "title": "Signed message (.p7m)",
+      "file": "message.p7m",
+      "signature": null,
+      "expected": "VALID",
+      "explanation": "The text is stored inside the signature file itself (an 'enveloping' signature)."
+    }
+  ]
+}

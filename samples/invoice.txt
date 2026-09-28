@@ -1,0 +1,4 @@
+INVOICE #2026-042
+Bill to: Alice Sharma
+Item: Discrete Mathematics tutoring (6 months)
+Amount due: Rs. 5,000

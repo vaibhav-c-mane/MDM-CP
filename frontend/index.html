@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Digital Signature Verifier</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<div class="app">
+<aside class="sidebar">
+  <a class="brand" href="#verify" data-tab-link="verify">
+    <span class="logo" aria-hidden="true">
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>
+    </span>
+    <span><strong>Signature Verifier</strong><small>Discrete Mathematics project</small></span>
+  </a>
+  <nav class="tabs" role="tablist">
+    <button class="tab active" data-tab="verify">
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>
+      <span>Verify</span></button>
+    <button class="tab" data-tab="sign">
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+      <span>Sign</span></button>
+    <button class="tab" data-tab="learn">
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 4h6a4 4 0 0 1 4 4v12a3 3 0 0 0-3-3H2z"/><path d="M22 4h-6a4 4 0 0 0-4 4v12a3 3 0 0 1 3-3h7z"/></svg>
+      <span>How it works</span></button>
+  </nav>
+  <div class="side-foot">
+    <span id="trust-info"></span>
+    <span>For learning, not for legal use</span>
+  </div>
+</aside>
+
+
+<main>
+  <!-- ======================= VERIFY ======================= -->
+  <section id="tab-verify" class="panel active">
+    <div id="verify-start">
+      <header class="page-head">
+        <h1>Verify a signature</h1>
+        <p>Check that a signed file is unchanged, was signed with the signer's private key, and comes from a trusted certificate authority.</p>
+      </header>
+
+      <div class="verify-grid">
+        <section class="card upload-card">
+          <div class="card-head"><h2>Upload</h2></div>
+          <div class="card-body">
+            <div class="form-row">
+              <div class="form-label">Signed file<small>PDF, .p7m, or any file · max 10 MB</small></div>
+              <div class="form-input">
+                <label class="dropzone" id="drop-doc">
+                  <input type="file" id="doc-input" hidden>
+                  <span class="drop-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M12 18v-6"/><path d="m9 15 3-3 3 3"/></svg>
+                  </span>
+                  <span class="drop-title">Choose file</span>
+                  <span class="drop-sub">or drag it here</span>
+                </label>
+                <div id="doc-chip" class="chip" hidden></div>
+              </div>
+            </div>
+            <div class="form-row" id="sig-slot">
+              <div class="form-label">Signature file<small>Optional · .p7s or .sig, only if the signature is separate</small></div>
+              <div class="form-input">
+                <label class="dropzone" id="drop-sig">
+                  <input type="file" id="sig-input" hidden>
+                  <span class="drop-title">Choose file</span>
+                  <span class="drop-sub">or drag it here</span>
+                </label>
+                <div id="sig-chip" class="chip" hidden></div>
+              </div>
+            </div>
+          </div>
+          <div class="card-foot">
+            <span class="muted small">Files are checked locally and not stored.</span>
+            <button class="btn primary" id="verify-btn" disabled>Verify signature</button>
+          </div>
+        </section>
+
+        <section class="card">
+          <div class="card-head"><h2>What is checked</h2></div>
+          <ol class="check-steps">
+            <li><strong>Integrity</strong><span>SHA-256 of the file equals the hash stored in the signature.</span></li>
+            <li><strong>Signature</strong><span>The public key opens the signature: s<sup>e</sup> mod n gives that hash (RSA), or the ECDSA equation holds.</span></li>
+            <li><strong>Trust</strong><span>The certificate chain leads to a root in the trust store.</span></li>
+            <li><strong>Validity</strong><span>Certificates were valid when the file was signed; the algorithm is not weak.</span></li>
+          </ol>
+        </section>
+      </div>
+
+      <section class="card samples">
+        <div class="card-head">
+          <h2>Sample files</h2>
+          <div class="samples-legend"><span><i class="dot VALID"></i>Valid</span><span><i class="dot UNKNOWN"></i>Needs attention</span><span><i class="dot INVALID"></i>Not valid</span><span><i class="dot NO_SIGNATURE"></i>No signature</span></div>
+        </div>
+        <div id="sample-list" class="table-wrap flush"></div>
+      </section>
+    </div>
+
+    <div id="verify-result" hidden></div>
+  </section>
+
+  <!-- ======================= SIGN ======================= -->
+  <section id="tab-sign" class="panel">
+    <header class="page-head">
+      <h1>Sign a document</h1>
+      <p>Signers get certificates from the built-in DSV Demo CA, a small Public Key Infrastructure for learning. Sign a new PDF or any file, then verify it.</p>
+    </header>
+
+    <div class="sign-layout">
+      <div class="card">
+        <div class="card-head"><h2>1. Signer</h2></div>
+        <div id="identity-list" class="identity-list"></div>
+        <details class="new-identity">
+          <summary>+ Create a new signer</summary>
+          <form id="identity-form" class="stack">
+            <div class="field"><label for="id-name">Full name</label><input id="id-name" name="name" required maxlength="64" placeholder="Your name"></div>
+            <div class="field"><label for="id-email">Email <span class="muted">(optional)</span></label><input id="id-email" name="email" type="email" maxlength="190" placeholder="you@example.org"></div>
+            <div class="field"><label for="id-org">Organisation <span class="muted">(optional)</span></label><input id="id-org" name="organization" maxlength="64" placeholder="College / company"></div>
+            <button class="btn" type="submit">Issue certificate</button>
+            <p class="muted small">Generates a 2048-bit RSA key (Miller–Rabin primes) and a certificate signed by the Demo Signing CA. Takes a few seconds.</p>
+          </form>
+        </details>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h2>2. Document</h2></div>
+        <div class="seg" role="tablist">
+          <button type="button" class="on" data-sign-mode="pdf">Write &amp; sign a PDF</button>
+          <button type="button" data-sign-mode="file">Sign any file (.p7s)</button>
+        </div>
+        <form id="sign-pdf-form" class="stack">
+          <div class="field"><label for="pdf-title">Title</label><input id="pdf-title" name="title" maxlength="120" value="Letter of Approval"></div>
+          <div class="field"><label for="pdf-text">Text</label>
+            <textarea id="pdf-text" name="text" rows="7">I approve the Discrete Mathematics project "Digital Signature Verifier".
+
+The project may be presented at the department showcase.</textarea></div>
+          <div class="grid2">
+            <div class="field"><label for="pdf-reason">Reason</label><input id="pdf-reason" name="reason" maxlength="120" value="I approve this document"></div>
+            <div class="field"><label for="pdf-location">Place</label><input id="pdf-location" name="location" maxlength="80" value="New Delhi"></div>
+          </div>
+          <button class="btn primary" type="submit">Create signed PDF</button>
+        </form>
+        <form id="sign-file-form" class="stack" hidden>
+          <label class="dropzone small" id="drop-sign">
+            <input type="file" id="sign-input" hidden>
+            <span class="drop-sub">Drop any file or <u>browse</u></span>
+          </label>
+          <div id="sign-chip" class="chip" hidden></div>
+          <button class="btn primary" type="submit">Create .p7s signature</button>
+        </form>
+        <div id="sign-result"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======================= LEARN ======================= -->
+  <section id="tab-learn" class="panel">
+    <header class="page-head">
+      <h1>How it works</h1>
+      <p>Four ideas from discrete mathematics, each computed from scratch in this project.</p>
+    </header>
+
+    <section class="card">
+      <div class="card-head"><h2>The four steps</h2></div>
+      <div class="table-wrap flush"><table class="steps-table">
+        <thead><tr><th>#</th><th>Step</th><th>Formula</th><th>Discrete maths behind it</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td>Hash</td><td class="mono">h = SHA-256(document)</td><td>A 256-bit fingerprint; one changed byte changes h completely. Collisions exist (pigeonhole principle) but cannot be found.</td></tr>
+          <tr><td>2</td><td>Sign (private key)</td><td class="mono">s = h<sup>d</sup> mod n</td><td>n = p·q with primes from Miller–Rabin; d = e<sup>−1</sup> mod φ(n) by the extended Euclidean algorithm.</td></tr>
+          <tr><td>3</td><td>Verify (public key)</td><td class="mono">s<sup>e</sup> mod n = h ?</td><td>Works because e·d ≡ 1 (mod φ(n)), with Fermat/Euler and the CRT; computed by square-and-multiply.</td></tr>
+          <tr><td>4</td><td>Trust (PKI)</td><td class="mono">Root CA → CA → Signer</td><td>Each certificate is signed by its issuer with the same maths; the path must end at a trusted root.</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <h2 class="section-title">Try RSA with small numbers</h2>
+    <form class="card math" data-api="rsa">
+      <h3>RSA key, signature and check</h3>
+      <p class="muted small">Pick two primes p and q, a public exponent e and a message hash m.</p>
+      <div class="grid4">
+        <div class="field"><label>prime p</label><input name="p" value="61"></div>
+        <div class="field"><label>prime q</label><input name="q" value="53"></div>
+        <div class="field"><label>public e</label><input name="e" value="17"></div>
+        <div class="field"><label>message hash m</label><input name="m" value="1128"></div>
+      </div>
+      <button class="btn primary" type="submit">Sign and verify</button>
+      <div class="out"></div>
+    </form>
+
+    <h2 class="section-title">Math Lab</h2>
+    <div class="lab-grid">
+      <form class="card math" data-api="gcd">
+        <h3>Euclid &amp; Bézout</h3>
+        <p class="muted small">gcd(a, b) and x, y with ax + by = gcd</p>
+        <div class="grid2">
+          <div class="field"><label>a</label><input name="a" value="3120"></div>
+          <div class="field"><label>b</label><input name="b" value="17"></div>
+        </div>
+        <button class="btn" type="submit">Compute</button>
+        <div class="out"></div>
+      </form>
+      <form class="card math" data-api="inverse">
+        <h3>Modular inverse</h3>
+        <p class="muted small">x with a·x ≡ 1 (mod n)</p>
+        <div class="grid2">
+          <div class="field"><label>a</label><input name="a" value="17"></div>
+          <div class="field"><label>n</label><input name="n" value="3120"></div>
+        </div>
+        <button class="btn" type="submit">Compute</button>
+        <div class="out"></div>
+      </form>
+      <form class="card math" data-api="modpow">
+        <h3>Square-and-multiply</h3>
+        <p class="muted small">base<sup>exponent</sup> mod modulus</p>
+        <div class="grid3">
+          <div class="field"><label>base</label><input name="base" value="2678"></div>
+          <div class="field"><label>exponent</label><input name="exponent" value="17"></div>
+          <div class="field"><label>modulus</label><input name="modulus" value="3233"></div>
+        </div>
+        <button class="btn" type="submit">Compute</button>
+        <div class="out"></div>
+      </form>
+      <form class="card math" data-api="prime">
+        <h3>Primality test</h3>
+        <p class="muted small">Fermat vs Miller–Rabin. Try 561 (a Carmichael number).</p>
+        <div class="field"><label>n</label><input name="n" value="561"></div>
+        <button class="btn" type="submit">Test</button>
+        <div class="out"></div>
+      </form>
+      <form class="card math" data-api="crt">
+        <h3>Chinese Remainder Theorem</h3>
+        <p class="muted small">x ≡ r1 (mod m1), x ≡ r2 (mod m2)</p>
+        <div class="grid4">
+          <div class="field"><label>r1</label><input name="r1" value="2"></div>
+          <div class="field"><label>m1</label><input name="m1" value="3"></div>
+          <div class="field"><label>r2</label><input name="r2" value="3"></div>
+          <div class="field"><label>m2</label><input name="m2" value="5"></div>
+        </div>
+        <button class="btn" type="submit">Solve</button>
+        <div class="out"></div>
+      </form>
+    </div>
+
+    <h2 class="section-title">Attacks: why the rules matter</h2>
+    <div class="lab-grid two">
+      <form class="card" id="attack-factor">
+        <h3>Break a small key</h3>
+        <p class="muted small">Factoring n gives p, q, φ(n) and the private key d. Up to 64 bits.</p>
+        <div class="grid2">
+          <div class="field"><label>n</label><input name="n" value="600313907681"></div>
+          <div class="field"><label>e</label><input name="e" value="65537"></div>
+        </div>
+        <button class="btn" type="submit">Factor n</button>
+        <div class="out"></div>
+      </form>
+      <form class="card" id="attack-forgery">
+        <h3>Forge "textbook" RSA</h3>
+        <p class="muted small">Without hashing, (s1·s2)<sup>e</sup> = m1·m2, so signatures can be combined.</p>
+        <div class="grid2">
+          <div class="field"><label>m1</label><input name="m1" value="5"></div>
+          <div class="field"><label>m2</label><input name="m2" value="7"></div>
+        </div>
+        <button class="btn" type="submit">Run forgery</button>
+        <div class="out"></div>
+      </form>
+    </div>
+  </section>
+</main>
+
+</div>
+<div id="toast" role="status" aria-live="polite"></div>
+<script src="/static/app.js"></script>
+</body>
+</html>
