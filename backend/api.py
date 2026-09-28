@@ -13,7 +13,7 @@ import re
 from pathlib import Path
 from typing import Any, Callable, Dict, Optional
 
-from dsv import attacks, explain, pki, verifier
+from dsv import attacks, explain, images, pdfedit, pki, verifier
 from dsv.number_theory import is_probable_prime, mod_pow
 from dsv.rsa import (
     PublicKey,
@@ -157,8 +157,34 @@ def sign_file(body):
     ident = _identity(body)
     data = get_file(body, "file_b64")
     name = safe_filename(body.get("filename", ""), "file")
+    expect = str(body.get("expect", "") or "").upper()
+    if expect in ("JPEG", "PNG") and images.detect(data) != expect:
+        raise ApiError(f"this is not a {expect} image; choose a .{'jpg' if expect == 'JPEG' else 'png'} file")
     sig = pki.sign_detached(data, ident)
     return {"filename": name + ".p7s", "file_b64": base64.b64encode(sig).decode(), "signer": ident.cert.common_name}
+
+
+def sign_upload_pdf(body):
+    ident = _identity(body)
+    data = get_file(body, "file_b64")
+    if not data.lstrip()[:5] == b"%PDF-":
+        raise ApiError("this is not a PDF file; choose a .pdf file")
+    image = get_file(body, "image_b64", required=False)
+    expect = str(body.get("image_type", "") or "").upper()
+    if image and expect in ("JPEG", "PNG") and images.detect(image) != expect:
+        raise ApiError(f"the signature picture is not a {expect}; choose a .{'jpg' if expect == 'JPEG' else 'png'} file")
+    reason = get_text(body, "reason", 120) or "I approve this document"
+    location = get_text(body, "location", 80)
+    try:
+        out = pki.sign_uploaded_pdf(data, ident, reason, location, image)
+    except (pdfedit.PdfError, images.ImageError) as exc:
+        raise ApiError(str(exc)) from None
+    except (ValueError, KeyError, IndexError, TypeError, AttributeError):
+        raise ApiError("this PDF could not be read for signing (its structure is not supported)") from None
+    stem = safe_filename(body.get("filename", ""), "document.pdf")
+    stem = stem[:-4] if stem.lower().endswith(".pdf") else stem
+    return {"filename": stem + "-signed.pdf", "file_b64": base64.b64encode(out).decode(),
+            "signer": ident.cert.common_name}
 
 
 # ---------- math lab ----------
@@ -249,6 +275,7 @@ POST_ROUTES: Dict[str, Callable[[Dict[str, Any]], Dict[str, Any]]] = {
     "/api/identities": new_identity,
     "/api/sign/pdf": sign_pdf,
     "/api/sign/file": sign_file,
+    "/api/sign/upload-pdf": sign_upload_pdf,
     "/api/math/gcd": math_gcd,
     "/api/math/inverse": math_inverse,
     "/api/math/modpow": math_modpow,

@@ -345,18 +345,95 @@ $("#identity-form").addEventListener("submit", (e) => {
   }, "Generating key…");
 });
 
-$$("[data-sign-mode]").forEach((b) => b.addEventListener("click", () => {
-  $$("[data-sign-mode]").forEach((x) => x.classList.toggle("on", x === b));
-  $("#sign-pdf-form").hidden = b.dataset.signMode !== "pdf";
-  $("#sign-file-form").hidden = b.dataset.signMode !== "file";
-  $("#sign-result").innerHTML = "";
-}));
+/* Sign formats: PDF modes give a signed PDF, image/other modes give a .p7s */
+const SIGN_MODES = {
+  "pdf":      { form: "upload", note: "Upload a PDF; you get the same PDF with a signature inside it." },
+  "pdf-jpeg": { form: "upload", image: "JPEG", note: "Upload a PDF and a JPEG of your handwritten signature; the picture is shown in the signature box." },
+  "pdf-png":  { form: "upload", image: "PNG", note: "Upload a PDF and a PNG of your signature (a transparent background looks best)." },
+  "jpeg":     { form: "file", expect: "JPEG", accept: "image/jpeg,.jpg,.jpeg", label: "JPEG image", hint: ".jpg or .jpeg · max 10 MB", note: "Sign a JPEG photo or scan; you get a .p7s signature file for it." },
+  "png":      { form: "file", expect: "PNG", accept: "image/png,.png", label: "PNG image", hint: ".png · max 10 MB", note: "Sign a PNG image; you get a .p7s signature file for it." },
+  "new":      { form: "pdf", note: "Type a short letter; it is turned into a PDF and signed." },
+  "file":     { form: "file", accept: "", label: "File to sign", hint: "any type · max 10 MB", note: "Sign any file (Word, text, zip…); you get a .p7s signature file for it." },
+};
+let signMode = "pdf";
+let signFile = null, uplPdf = null, uplImg = null;
 
-let signFile = null;
+function setSignMode(mode) {
+  const m = SIGN_MODES[mode];
+  signMode = mode;
+  $$("[data-sign-mode]").forEach((x) => { x.classList.toggle("on", x.dataset.signMode === mode); x.setAttribute("aria-checked", x.dataset.signMode === mode); });
+  $("#sign-upload-form").hidden = m.form !== "upload";
+  $("#sign-pdf-form").hidden = m.form !== "pdf";
+  $("#sign-file-form").hidden = m.form !== "file";
+  $("#format-note").textContent = m.note;
+  $("#upl-img-row").hidden = !m.image;
+  if (m.image) {
+    $("#upl-img-hint").textContent = m.image === "JPEG" ? ".jpg or .jpeg" : ".png";
+    $("#upl-img-input").accept = m.image === "JPEG" ? "image/jpeg,.jpg,.jpeg" : "image/png,.png";
+    if (uplImg && uplImg.type !== m.image) setUplImg(null);
+  }
+  if (m.form === "file") {
+    $("#sign-file-label").textContent = m.label;
+    $("#sign-file-hint").textContent = m.hint;
+    $("#sign-input").accept = m.accept;
+    if (signFile && m.expect && signFile.type !== m.expect) setSignFile(null);
+  }
+  $("#sign-result").innerHTML = "";
+}
+$$("[data-sign-mode]").forEach((b) => b.addEventListener("click", () => setSignMode(b.dataset.signMode)));
+
+/* first bytes tell the real type, whatever the file name says */
+function sniff(file) {
+  const head = atob(file.b64.slice(0, 16));
+  if (head.startsWith("\xff\xd8\xff")) return "JPEG";
+  if (head.startsWith("\x89PNG")) return "PNG";
+  if (head.trimStart().startsWith("%PDF-")) return "PDF";
+  return "";
+}
+
+function setSignFile(f) {
+  signFile = f;
+  chip($("#sign-chip"), f, () => setSignFile(null));
+  $("#drop-sign").hidden = !!f;
+}
+function setUplPdf(f) {
+  uplPdf = f;
+  chip($("#upl-pdf-chip"), f, () => setUplPdf(null));
+  $("#drop-upl-pdf").hidden = !!f;
+}
+function setUplImg(f) {
+  uplImg = f;
+  chip($("#upl-img-chip"), f, () => setUplImg(null));
+  $("#drop-upl-img").hidden = !!f;
+  $("#use-sample-sig").hidden = !!f;
+}
+
+async function pick(f, want) {
+  const file = await readFile(f);
+  file.type = sniff(file);
+  if (want && file.type !== want) throw new Error(`${f.name} is not a ${want} file`);
+  return file;
+}
 setupDrop($("#drop-sign"), $("#sign-input"), async (f) => {
-  try { signFile = await readFile(f); } catch (err) { toast(err.message); return; }
-  chip($("#sign-chip"), signFile, () => { signFile = null; chip($("#sign-chip"), null); $("#drop-sign").hidden = false; });
-  $("#drop-sign").hidden = true;
+  try { setSignFile(await pick(f, SIGN_MODES[signMode].expect)); } catch (err) { toast(err.message); }
+});
+setupDrop($("#drop-upl-pdf"), $("#upl-pdf-input"), async (f) => {
+  try { setUplPdf(await pick(f, "PDF")); } catch (err) { toast(err.message); }
+});
+setupDrop($("#drop-upl-img"), $("#upl-img-input"), async (f) => {
+  try { setUplImg(await pick(f, SIGN_MODES[signMode].image)); } catch (err) { toast(err.message); }
+});
+$("#use-sample-sig").addEventListener("click", async () => {
+  try {
+    const kind = SIGN_MODES[signMode].image;
+    const name = `signature-alice.${kind === "JPEG" ? "jpg" : "png"}`;
+    const res = await fetch(`/samples/assets/${name}`);
+    if (!res.ok) throw new Error("The sample signature picture is missing");
+    const buf = await res.arrayBuffer();
+    const f = { name, size: buf.byteLength, b64: toBase64(buf) };
+    f.type = kind;
+    setUplImg(f);
+  } catch (err) { toast(err.message); }
 });
 
 function currentSigner() {
@@ -388,12 +465,33 @@ $("#sign-pdf-form").addEventListener("submit", (e) => {
   }, "Signing…");
 });
 
+$("#sign-upload-form").addEventListener("submit", (e) => {
+  e.preventDefault();
+  const f = e.currentTarget;
+  busy($("button[type=submit]", f), async () => {
+    try {
+      const m = SIGN_MODES[signMode];
+      if (!uplPdf) throw new Error("Choose a PDF to sign");
+      if (m.image && !uplImg) throw new Error(`Choose a ${m.image} signature picture`);
+      const res = await api("/api/sign/upload-pdf", { signer: currentSigner(), file_b64: uplPdf.b64, filename: uplPdf.name,
+        image_b64: m.image ? uplImg.b64 : null, image_type: m.image || "", reason: f.reason.value, location: f.location.value });
+      downloadB64(res.filename, res.file_b64, "application/pdf");
+      showSigned(`<strong>Signed by ${esc(res.signer)}.</strong><p>${esc(res.filename)} has been downloaded${m.image ? `, with the ${m.image} signature picture on the last page` : ""}.</p>`, () => {
+        state.doc = { name: res.filename, size: atob(res.file_b64).length, b64: res.file_b64 };
+        state.sig = null;
+        showTab("verify"); refreshVerifyForm(); runVerify();
+      });
+    } catch (err) { $("#sign-result").innerHTML = errorBox(err); }
+  }, "Signing…");
+});
+
 $("#sign-file-form").addEventListener("submit", (e) => {
   e.preventDefault();
   busy($("button[type=submit]", e.currentTarget), async () => {
     try {
-      if (!signFile) throw new Error("Choose a file to sign");
-      const res = await api("/api/sign/file", { signer: currentSigner(), file_b64: signFile.b64, filename: signFile.name });
+      if (!signFile) throw new Error(SIGN_MODES[signMode].expect ? `Choose a ${SIGN_MODES[signMode].expect} image to sign` : "Choose a file to sign");
+      const res = await api("/api/sign/file", { signer: currentSigner(), file_b64: signFile.b64, filename: signFile.name,
+        expect: SIGN_MODES[signMode].expect || "" });
       downloadB64(res.filename, res.file_b64, "application/pkcs7-signature");
       const doc = signFile;
       showSigned(`<strong>Signed by ${esc(res.signer)}.</strong><p>${esc(res.filename)} has been downloaded. Keep it next to ${esc(doc.name)}: both are needed to verify.</p>`, () => {
@@ -470,6 +568,7 @@ $("#attack-forgery").addEventListener("submit", (e) => {
 });
 
 /* ================= start ================= */
+setSignMode("pdf");
 refreshVerifyForm();
 loadSamples();
 loadIdentities();

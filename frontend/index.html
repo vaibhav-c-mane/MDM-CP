@@ -47,7 +47,7 @@
           <div class="card-head"><h2>Upload</h2></div>
           <div class="card-body">
             <div class="form-row">
-              <div class="form-label">Signed file<small>PDF, .p7m, or any file · max 10 MB</small></div>
+              <div class="form-label">Signed file<small>PDF, JPEG, PNG, .p7m or any file · max 10 MB</small></div>
               <div class="form-input">
                 <label class="dropzone" id="drop-doc">
                   <input type="file" id="doc-input" hidden>
@@ -61,7 +61,7 @@
               </div>
             </div>
             <div class="form-row" id="sig-slot">
-              <div class="form-label">Signature file<small>Optional · .p7s or .sig, only if the signature is separate</small></div>
+              <div class="form-label">Signature file<small>.p7s, needed for JPEG, PNG and other files</small></div>
               <div class="form-input">
                 <label class="dropzone" id="drop-sig">
                   <input type="file" id="sig-input" hidden>
@@ -89,6 +89,20 @@
         </section>
       </div>
 
+      <section class="card">
+        <div class="card-head"><h2>Supported formats</h2></div>
+        <div class="table-wrap flush"><table class="formats-table">
+          <thead><tr><th>Format</th><th>What to upload</th><th>Where the signature is</th></tr></thead>
+          <tbody>
+            <tr><td><b>PDF</b></td><td>The signed .pdf</td><td>Inside the PDF</td></tr>
+            <tr><td><b>PDF + JPEG</b> / <b>PDF + PNG</b></td><td>The signed .pdf</td><td>Inside the PDF; the picture only shows who signed</td></tr>
+            <tr><td><b>JPEG</b></td><td>The .jpg and its .p7s</td><td>Separate .p7s file</td></tr>
+            <tr><td><b>PNG</b></td><td>The .png and its .p7s</td><td>Separate .p7s file</td></tr>
+            <tr><td><b>Other file</b></td><td>The file and its .p7s, or one .p7m</td><td>Separate .p7s, or inside the .p7m</td></tr>
+          </tbody>
+        </table></div>
+      </section>
+
       <section class="card samples">
         <div class="card-head">
           <h2>Sample files</h2>
@@ -105,7 +119,7 @@
   <section id="tab-sign" class="panel">
     <header class="page-head">
       <h1>Sign a document</h1>
-      <p>Signers get certificates from the built-in DSV Demo CA, a small Public Key Infrastructure for learning. Sign a new PDF or any file, then verify it.</p>
+      <p>Signers get certificates from the built-in DSV Demo CA, a small Public Key Infrastructure for learning. Sign a PDF (with or without a JPEG or PNG signature picture), a JPEG or PNG image, or any file, then verify it.</p>
     </header>
 
     <div class="sign-layout">
@@ -126,11 +140,53 @@
 
       <div class="card">
         <div class="card-head"><h2>2. Document</h2></div>
-        <div class="seg" role="tablist">
-          <button type="button" class="on" data-sign-mode="pdf">Write &amp; sign a PDF</button>
-          <button type="button" data-sign-mode="file">Sign any file (.p7s)</button>
+        <div class="card-body">
+          <div class="form-label">Format</div>
+          <div class="format-grid" role="radiogroup" aria-label="Format to sign">
+            <button type="button" class="fmt on" data-sign-mode="pdf" role="radio"><b>PDF</b><span>Signed PDF</span></button>
+            <button type="button" class="fmt" data-sign-mode="pdf-jpeg" role="radio"><b>PDF + JPEG</b><span>PDF with signature picture</span></button>
+            <button type="button" class="fmt" data-sign-mode="pdf-png" role="radio"><b>PDF + PNG</b><span>PDF with signature picture</span></button>
+            <button type="button" class="fmt" data-sign-mode="jpeg" role="radio"><b>JPEG</b><span>Image + .p7s</span></button>
+            <button type="button" class="fmt" data-sign-mode="png" role="radio"><b>PNG</b><span>Image + .p7s</span></button>
+            <button type="button" class="fmt" data-sign-mode="new" role="radio"><b>New PDF</b><span>Write text, sign it</span></button>
+            <button type="button" class="fmt" data-sign-mode="file" role="radio"><b>Other file</b><span>Any file + .p7s</span></button>
+          </div>
+          <p class="muted small" id="format-note"></p>
         </div>
-        <form id="sign-pdf-form" class="stack">
+
+        <form id="sign-upload-form" class="card-body stack">
+          <div class="form-row">
+            <div class="form-label">PDF to sign<small>.pdf · max 10 MB</small></div>
+            <div class="form-input">
+                <label class="dropzone" id="drop-upl-pdf">
+                  <input type="file" id="upl-pdf-input" accept="application/pdf,.pdf" hidden>
+                  <span class="drop-title">Choose PDF</span>
+                  <span class="drop-sub">or drag it here</span>
+                </label>
+                <div id="upl-pdf-chip" class="chip" hidden></div>
+            </div>
+          </div>
+          <div class="form-row" id="upl-img-row" hidden>
+            <div class="form-label">Signature picture<small id="upl-img-hint">JPEG</small></div>
+            <div class="form-input">
+                <label class="dropzone" id="drop-upl-img">
+                  <input type="file" id="upl-img-input" accept="image/jpeg,.jpg,.jpeg" hidden>
+                  <span class="drop-title">Choose picture</span>
+                  <span class="drop-sub">or drag it here</span>
+                </label>
+                <div id="upl-img-chip" class="chip" hidden></div>
+                <button type="button" class="linkish small" id="use-sample-sig">Use the sample signature picture</button>
+            </div>
+          </div>
+          <div class="grid2">
+            <div class="field"><label for="upl-reason">Reason</label><input id="upl-reason" name="reason" maxlength="120" value="I approve this document"></div>
+            <div class="field"><label for="upl-location">Place</label><input id="upl-location" name="location" maxlength="80" value="New Delhi"></div>
+          </div>
+          <p class="muted small">The signature box is added at the bottom right of the last page. The original pages are not changed: the signature is appended as an incremental update.</p>
+          <button class="btn primary" type="submit">Sign PDF</button>
+        </form>
+
+        <form id="sign-pdf-form" class="card-body stack" hidden>
           <div class="field"><label for="pdf-title">Title</label><input id="pdf-title" name="title" maxlength="120" value="Letter of Approval"></div>
           <div class="field"><label for="pdf-text">Text</label>
             <textarea id="pdf-text" name="text" rows="7">I approve the Discrete Mathematics project "Digital Signature Verifier".
@@ -142,12 +198,20 @@ The project may be presented at the department showcase.</textarea></div>
           </div>
           <button class="btn primary" type="submit">Create signed PDF</button>
         </form>
-        <form id="sign-file-form" class="stack" hidden>
-          <label class="dropzone small" id="drop-sign">
-            <input type="file" id="sign-input" hidden>
-            <span class="drop-sub">Drop any file or <u>browse</u></span>
-          </label>
-          <div id="sign-chip" class="chip" hidden></div>
+
+        <form id="sign-file-form" class="card-body stack" hidden>
+          <div class="form-row">
+            <div class="form-label"><span id="sign-file-label">File to sign</span><small id="sign-file-hint">any type · max 10 MB</small></div>
+            <div class="form-input">
+                <label class="dropzone" id="drop-sign">
+                  <input type="file" id="sign-input" accept="" hidden>
+                  <span class="drop-title">Choose file</span>
+                  <span class="drop-sub">or drag it here</span>
+                </label>
+                <div id="sign-chip" class="chip" hidden></div>
+            </div>
+          </div>
+          <p class="muted small">You get a separate <b>.p7s</b> signature file. The image itself is not changed; keep both files together to verify.</p>
           <button class="btn primary" type="submit">Create .p7s signature</button>
         </form>
         <div id="sign-result"></div>

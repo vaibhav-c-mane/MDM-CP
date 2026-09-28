@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Optional
 
 ROOT = Path(__file__).resolve().parent.parent
+ASSETS = ROOT / "samples" / "assets"
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
@@ -101,6 +102,7 @@ def main(out_dir: Optional[Path] = None, pki_dir: Path = pki.PKI_DIR, trust_dir:
         (out / name).write_bytes(data)
 
     def add(sid, title, file, expected, explanation, signature=None, group="PDF documents"):
+        sid = f"S{len(samples) + 1:02d}"  # numbered in list order
         samples.append({"id": sid, "group": group, "title": title, "file": file, "signature": signature,
                         "expected": expected, "explanation": explanation})
 
@@ -142,27 +144,68 @@ def main(out_dir: Optional[Path] = None, pki_dir: Path = pki.PKI_DIR, trust_dir:
     write("unsigned.pdf", unsigned_pdf("This PDF has no digital signature."))
     add("S09", "Unsigned PDF", "unsigned.pdf", "NO_SIGNATURE", "A normal PDF without any signature.")
 
+    # ---- existing PDF signed with a picture of a handwritten signature ----
+    g_pic = "PDF + signature picture (JPEG / PNG)"
+    cert_pdf = (ASSETS / "certificate-unsigned.pdf").read_bytes()
+    write("certificate-unsigned.pdf", cert_pdf)
+    reason = "Project approved"
+    with_png = pki.sign_uploaded_pdf(cert_pdf, alice, reason, "New Delhi", (ASSETS / "signature-alice.png").read_bytes())
+    write("certificate-signed-png.pdf", with_png)
+    add("S15", "PDF + PNG signature picture", "certificate-signed-png.pdf", "VALID",
+        "An existing PDF signed by Alice. Her PNG signature picture is shown in the box on the page; "
+        "the real proof is the digital signature inside the PDF.", group=g_pic)
+
+    with_jpg = pki.sign_uploaded_pdf(cert_pdf, bob, reason, "Mumbai", (ASSETS / "signature-bob.jpg").read_bytes())
+    write("certificate-signed-jpeg.pdf", with_jpg)
+    add("S16", "PDF + JPEG signature picture", "certificate-signed-jpeg.pdf", "VALID",
+        "The same PDF signed by Bob, with his JPEG signature picture.", group=g_pic)
+
+    edited = with_png.replace(b"(Project approved)", b"(Project rejected)")
+    assert edited != with_png
+    write("certificate-signed-png-edited.pdf", edited)
+    add("S17", "PDF + PNG, edited after signing", "certificate-signed-png-edited.pdf", "INVALID",
+        "The reason was changed from 'Project approved' to 'Project rejected' after signing. The picture still "
+        "looks the same, but the hash no longer matches: a picture alone proves nothing.", group=g_pic)
+
+    write("certificate-signed.pdf", pki.sign_uploaded_pdf(cert_pdf, alice, reason, "New Delhi"))
+    add("S18", "Existing PDF signed (no picture)", "certificate-signed.pdf", "VALID",
+        "An existing PDF signed without a picture; the box shows the signer's name and date.", group=g_pic)
+
+    # ---- JPEG and PNG images with a .p7s signature ----
+    g_img = "JPEG and PNG images + .p7s signature"
+    for ext, kind, first in (("jpg", "JPEG", "S19"), ("png", "PNG", "S21")):
+        photo = (ASSETS / f"photo.{ext}").read_bytes()
+        write(f"photo.{ext}", photo)
+        write(f"photo.{ext}.p7s", pki.sign_detached(photo, alice))
+        write(f"photo-edited.{ext}", (ASSETS / f"photo-edited.{ext}").read_bytes())
+        second = f"S{int(first[1:]) + 1}"
+        add(first, f"{kind} photo + .p7s", f"photo.{ext}", "VALID",
+            f"Alice signed the {kind} image; the signature is in photo.{ext}.p7s.", f"photo.{ext}.p7s", g_img)
+        add(second, f"{kind} photo edited after signing", f"photo-edited.{ext}", "INVALID",
+            f"The year in the caption was changed from 2026 to 2027, so the {kind} bytes and their hash changed.",
+            f"photo.{ext}.p7s", g_img)
+
     g2 = "Other files + .p7s signature"
     write("invoice.txt", INVOICE.encode())
     write("invoice.txt.p7s", pki.sign_detached(INVOICE.encode(), bob))
-    add("S10", "Text file with detached signature", "invoice.txt", "VALID",
+    add("S23", "Text file with detached signature", "invoice.txt", "VALID",
         "Bob signed the invoice; the signature is in a separate .p7s file.", "invoice.txt.p7s", g2)
 
     write("invoice-edited.txt", INVOICE.replace("5,000", "50,000").encode())
-    add("S11", "Edited text file", "invoice-edited.txt", "INVALID",
+    add("S24", "Edited text file", "invoice-edited.txt", "INVALID",
         "The amount was changed after Bob signed, so the hash is different.", "invoice.txt.p7s", g2)
 
     image = tiny_bmp()
     write("photo.bmp", image)
     write("photo.bmp.p7s", pki.sign_detached(image, alice))
-    add("S12", "Image with detached signature", "photo.bmp", "VALID",
+    add("S25", "Image with detached signature", "photo.bmp", "VALID",
         "Any file is just bytes, so images can be signed too.", "photo.bmp.p7s", g2)
 
-    add("S13", "Signature for a different file", "invoice.txt", "INVALID",
+    add("S26", "Signature for a different file", "invoice.txt", "INVALID",
         "The photo's signature does not match the invoice.", "photo.bmp.p7s", g2)
 
     write("message.p7m", pki.sign_detached(b"Exam results will be announced on Monday.\n", alice, attach=True))
-    add("S14", "Signed message (.p7m)", "message.p7m", "VALID",
+    add("S27", "Signed message (.p7m)", "message.p7m", "VALID",
         "The text is stored inside the signature file itself (an 'enveloping' signature).", None, g2)
 
     (out / "samples.json").write_text(json.dumps({"samples": samples}, indent=2))

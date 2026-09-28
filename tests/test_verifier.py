@@ -29,7 +29,7 @@ class TestShippedSamples(unittest.TestCase):
     def test_every_sample_gives_expected_verdict(self):  # VER-01
         folder = ROOT / "samples"
         samples = json.loads((folder / "samples.json").read_text())["samples"]
-        self.assertEqual(len(samples), 14)
+        self.assertEqual(len(samples), 22)
         trust = TrustStore.from_folder(ROOT / "trust")
         for s in samples:
             with self.subTest(sample=s["id"]):

@@ -1,6 +1,6 @@
 # Digital Signature Verifier (Discrete Mathematics Project)
 
-A small online-style signature verifier, like the ones that check signed PDFs. Upload a signed **PDF**, a **.p7m** file, or **any file with its .p7s signature**, and it tells you:
+A small online-style signature verifier, like the ones that check signed PDFs. Upload a signed **PDF** (with or without a **JPEG/PNG signature picture**), a **JPEG** or **PNG** image with its .p7s signature, a **.p7m** file, or **any file with its .p7s signature**, and it tells you:
 
 1. **Is the document unchanged?** (hash comparison)
 2. **Was it signed with the matching private key?** (RSA or ECDSA maths)
@@ -10,8 +10,8 @@ Everything is built **from scratch** in Python with discrete mathematics: Euclid
 
 - **Backend:** Python standard library only, no installs.
 - **Frontend:** plain HTML, CSS and JavaScript.
-- **Samples:** 14 ready-made files (valid, tampered, untrusted, expired...) to click and try.
-- **Tests:** 139 automated tests.
+- **Samples:** 22 ready-made files (valid, tampered, untrusted, expired...) to click and try.
+- **Tests:** 157 automated tests.
 
 ## Run it
 
@@ -30,8 +30,22 @@ Your browser opens **http://127.0.0.1:8000**. Press `Ctrl+C` in the terminal to 
 | Page | What it does |
 |---|---|
 | **Verify** | Drop a file and get a green / amber / red result, with each check explained and a "Show the maths" button for the hash, s^e mod n and the certificate chain |
-| **Sign** | Pick a signer (or create one: you get a certificate from the demo CA), then write and sign a PDF or sign any file as `.p7s`. "Verify it now" checks it straight away |
+| **Sign** | Pick a signer (or create one: you get a certificate from the demo CA), then pick a format: **PDF**, **PDF + JPEG**, **PDF + PNG**, **JPEG**, **PNG**, **New PDF** or **Other file**. "Verify it now" checks it straight away |
 | **How it works** | Hash → sign → verify → trust in four cards, RSA with small numbers, a Math Lab (gcd, inverse, modular power, primality, CRT) and two attacks |
+
+## Formats
+
+| Format | What you upload on Sign | What you get | How to verify |
+|---|---|---|---|
+| PDF | an existing .pdf | the same PDF with a signature inside | upload the signed PDF |
+| PDF + JPEG | a .pdf and a .jpg picture of your signature | signed PDF, picture shown in the signature box | upload the signed PDF |
+| PDF + PNG | a .pdf and a .png picture (transparent looks best) | signed PDF, picture shown in the signature box | upload the signed PDF |
+| JPEG | a .jpg image | a .p7s signature file | upload the .jpg and the .p7s |
+| PNG | a .png image | a .p7s signature file | upload the .png and the .p7s |
+| New PDF | a title and text | a new signed PDF | upload the signed PDF |
+| Other file | any file | a .p7s signature file | upload the file and the .p7s |
+
+The signature picture only shows who signed; anyone could copy it. The proof is the digital signature (hash, RSA maths, certificate). An existing PDF is signed with an *incremental update*: the original bytes stay untouched and the signature, the box and the picture are appended, so earlier signatures in the file stay valid.
 
 ## What the results mean
 
@@ -57,6 +71,14 @@ On the Verify page, click any sample. The files are in `samples/`.
 | Expired certificate | Needs attention |
 | Weak hash (SHA-1) | Needs attention |
 | Unsigned PDF | No signature |
+| PDF + PNG signature picture | Valid |
+| PDF + JPEG signature picture | Valid |
+| PDF + PNG, edited after signing | Not valid |
+| Existing PDF signed (no picture) | Valid |
+| JPEG photo + `.p7s` | Valid |
+| JPEG photo edited after signing | Not valid |
+| PNG photo + `.p7s` | Valid |
+| PNG photo edited after signing | Not valid |
 | Text file + `.p7s` | Valid |
 | Edited text file + `.p7s` | Not valid |
 | Image + `.p7s` | Valid |
@@ -103,6 +125,8 @@ dsv/            the engine
   x509.py           certificates, chain building, trust store
   cms.py            CMS / PKCS#7 signatures (.p7s, .p7m, inside PDFs)
   pdf.py            finding PDF signatures, making signed PDFs
+  pdfedit.py        reading existing PDFs and appending a signature (incremental update)
+  images.py         reading JPEG and PNG signature pictures (PNG: zlib + row filters)
   pubkey.py         PKCS#1 v1.5 RSA and ECDSA checks on real keys
   verifier.py       runs every check and builds the report
   pki.py            the demo CA and signers
@@ -112,7 +136,7 @@ backend/        HTTP server and JSON API
 frontend/       index.html, style.css, app.js
 pki/            demo CA and signer keys (plain JSON, for learning only)
 trust/          trusted root certificates
-samples/        the 14 sample files
+samples/        the 22 sample files (assets/ holds the signature pictures and photos)
 tests/          automated tests (fixtures made with OpenSSL and pyHanko)
 ```
 
@@ -120,5 +144,5 @@ tests/          automated tests (fixtures made with OpenSSL and pyHanko)
 
 - Revocation is not checked (no OCSP or CRL): the tool works offline.
 - RSA-PSS and the P-521 curve are not supported; the result says "not supported" (amber).
-- The Sign page creates new PDFs; to sign an existing file it makes a separate `.p7s`.
+- Encrypted (password-protected) PDFs and interlaced PNGs cannot be signed.
 - Private keys are stored as plain JSON so they can be read while learning. Do not use this for real documents.

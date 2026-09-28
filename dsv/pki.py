@@ -19,7 +19,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
-from . import cms, pdf
+from . import cms, images, pdf, pdfedit
 from .rsa import PrivateKey, generate_keypair
 from .x509 import Certificate, build_certificate, parse_certificate, to_pem
 
@@ -155,3 +155,13 @@ def sign_new_pdf(title: str, body: str, ident: Identity, reason: str = "I approv
     return pdf.make_pdf_with_signature(
         title, body, ident.cert.common_name, when, reason, location,
         lambda signed: sign_detached(signed, ident, when, hash_name))
+
+
+def sign_uploaded_pdf(data: bytes, ident: Identity, reason: str = "I approve this document", location: str = "",
+                      image: Optional[bytes] = None, when: Optional[datetime] = None,
+                      hash_name: str = "sha256") -> bytes:
+    """Sign an existing PDF; `image` (JPEG or PNG bytes) is shown inside the signature box."""
+    when = when or datetime.now(timezone.utc)
+    picture = images.load(image) if image else None
+    return pdfedit.sign_existing_pdf(data, ident.cert.common_name, when, reason, location,
+                                     lambda signed: sign_detached(signed, ident, when, hash_name), picture)

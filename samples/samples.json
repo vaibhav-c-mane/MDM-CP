@@ -83,6 +83,78 @@
     },
     {
       "id": "S10",
+      "group": "PDF + signature picture (JPEG / PNG)",
+      "title": "PDF + PNG signature picture",
+      "file": "certificate-signed-png.pdf",
+      "signature": null,
+      "expected": "VALID",
+      "explanation": "An existing PDF signed by Alice. Her PNG signature picture is shown in the box on the page; the real proof is the digital signature inside the PDF."
+    },
+    {
+      "id": "S11",
+      "group": "PDF + signature picture (JPEG / PNG)",
+      "title": "PDF + JPEG signature picture",
+      "file": "certificate-signed-jpeg.pdf",
+      "signature": null,
+      "expected": "VALID",
+      "explanation": "The same PDF signed by Bob, with his JPEG signature picture."
+    },
+    {
+      "id": "S12",
+      "group": "PDF + signature picture (JPEG / PNG)",
+      "title": "PDF + PNG, edited after signing",
+      "file": "certificate-signed-png-edited.pdf",
+      "signature": null,
+      "expected": "INVALID",
+      "explanation": "The reason was changed from 'Project approved' to 'Project rejected' after signing. The picture still looks the same, but the hash no longer matches: a picture alone proves nothing."
+    },
+    {
+      "id": "S13",
+      "group": "PDF + signature picture (JPEG / PNG)",
+      "title": "Existing PDF signed (no picture)",
+      "file": "certificate-signed.pdf",
+      "signature": null,
+      "expected": "VALID",
+      "explanation": "An existing PDF signed without a picture; the box shows the signer's name and date."
+    },
+    {
+      "id": "S14",
+      "group": "JPEG and PNG images + .p7s signature",
+      "title": "JPEG photo + .p7s",
+      "file": "photo.jpg",
+      "signature": "photo.jpg.p7s",
+      "expected": "VALID",
+      "explanation": "Alice signed the JPEG image; the signature is in photo.jpg.p7s."
+    },
+    {
+      "id": "S15",
+      "group": "JPEG and PNG images + .p7s signature",
+      "title": "JPEG photo edited after signing",
+      "file": "photo-edited.jpg",
+      "signature": "photo.jpg.p7s",
+      "expected": "INVALID",
+      "explanation": "The year in the caption was changed from 2026 to 2027, so the JPEG bytes and their hash changed."
+    },
+    {
+      "id": "S16",
+      "group": "JPEG and PNG images + .p7s signature",
+      "title": "PNG photo + .p7s",
+      "file": "photo.png",
+      "signature": "photo.png.p7s",
+      "expected": "VALID",
+      "explanation": "Alice signed the PNG image; the signature is in photo.png.p7s."
+    },
+    {
+      "id": "S17",
+      "group": "JPEG and PNG images + .p7s signature",
+      "title": "PNG photo edited after signing",
+      "file": "photo-edited.png",
+      "signature": "photo.png.p7s",
+      "expected": "INVALID",
+      "explanation": "The year in the caption was changed from 2026 to 2027, so the PNG bytes and their hash changed."
+    },
+    {
+      "id": "S18",
       "group": "Other files + .p7s signature",
       "title": "Text file with detached signature",
       "file": "invoice.txt",
@@ -91,7 +163,7 @@
       "explanation": "Bob signed the invoice; the signature is in a separate .p7s file."
     },
     {
-      "id": "S11",
+      "id": "S19",
       "group": "Other files + .p7s signature",
       "title": "Edited text file",
       "file": "invoice-edited.txt",
@@ -100,7 +172,7 @@
       "explanation": "The amount was changed after Bob signed, so the hash is different."
     },
     {
-      "id": "S12",
+      "id": "S20",
       "group": "Other files + .p7s signature",
       "title": "Image with detached signature",
       "file": "photo.bmp",
@@ -109,7 +181,7 @@
       "explanation": "Any file is just bytes, so images can be signed too."
     },
     {
-      "id": "S13",
+      "id": "S21",
       "group": "Other files + .p7s signature",
       "title": "Signature for a different file",
       "file": "invoice.txt",
@@ -118,7 +190,7 @@
       "explanation": "The photo's signature does not match the invoice."
     },
     {
-      "id": "S14",
+      "id": "S22",
       "group": "Other files + .p7s signature",
       "title": "Signed message (.p7m)",
       "file": "message.p7m",

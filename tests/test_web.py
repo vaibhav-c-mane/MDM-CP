@@ -111,6 +111,29 @@ class TestWeb(unittest.TestCase):
             with self.subTest(path=path, body=body):
                 self.assertEqual(self.api(path, body)[0], 400)
 
+    def test_sign_uploaded_pdf_with_pictures(self):  # WEB-14
+        pdf = self.b64((SAMPLES / "assets" / "certificate-unsigned.pdf").read_bytes())
+        for kind, image in (("", None), ("PNG", "signature-alice.png"), ("JPEG", "signature-bob.jpg")):
+            with self.subTest(kind=kind):
+                body = {"signer": "alice", "file_b64": pdf, "filename": "certificate.pdf", "reason": "Approved",
+                        "image_type": kind, "image_b64": self.b64((SAMPLES / "assets" / image).read_bytes()) if image else None}
+                status, out = self.api("/api/sign/upload-pdf", body)
+                self.assertEqual((status, out["filename"]), (200, "certificate-signed.pdf"))
+                status, report = self.api("/api/verify", {"document_b64": out["file_b64"], "filename": out["filename"]})
+                self.assertEqual(report["overall"], "VALID")
+
+    def test_sign_upload_wrong_types(self):  # WEB-15
+        pdf = self.b64((SAMPLES / "unsigned.pdf").read_bytes())
+        png = self.b64((SAMPLES / "assets" / "signature-alice.png").read_bytes())
+        for path, body in (("/api/sign/upload-pdf", {"signer": "alice", "file_b64": png}),
+                           ("/api/sign/upload-pdf", {"signer": "alice", "file_b64": pdf, "image_b64": png, "image_type": "JPEG"}),
+                           ("/api/sign/upload-pdf", {"signer": "alice", "file_b64": pdf, "image_b64": self.b64(b"not an image")}),
+                           ("/api/sign/file", {"signer": "alice", "file_b64": pdf, "expect": "PNG"})):
+            with self.subTest(body=sorted(body)):
+                self.assertEqual(self.api(path, body)[0], 400)
+        status, out = self.api("/api/sign/file", {"signer": "alice", "file_b64": png, "filename": "s.png", "expect": "PNG"})
+        self.assertEqual((status, out["filename"]), (200, "s.png.p7s"))
+
     def test_trust_list(self):  # WEB-09
         status, data = self.api("/api/trust")
         self.assertEqual([r["name"] for r in data["roots"]], ["DSV Demo Root CA"])
